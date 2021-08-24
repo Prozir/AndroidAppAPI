@@ -15,14 +15,15 @@ namespace AndroidAppAPI
         {
             string Name = username;
             string Pass = password;
-            string validateUserQuery = "SELECT TOP 1 UserId FROM dbo.Master_USER WHERE Username = '" + Name + "' AND Password = '" + Pass + "';";
-            SqlCommand cmd = new SqlCommand(validateUserQuery, con);
+            string validateUserQuery = "SELECT COUNT(*) FROM dbo.Master_USER WHERE Username = '" + Name + "' AND Password = '" + Pass + "';";
+            SqlCommand cmd = new SqlCommand(validateUserQuery, con);            
             con.Open();
-            int i = cmd.ExecuteNonQuery();
+            var checkuserresult = cmd.ExecuteScalar();
+            int i = Convert.ToInt32(checkuserresult);          
             con.Close();
             if (i == 1)
             {
-                return "true";
+                return "True";
             }
             else
             {

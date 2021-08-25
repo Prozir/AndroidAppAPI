@@ -22,7 +22,7 @@ namespace AndroidAppAPI
                 var user = OBJ.ValidateUser(context.UserName, context.Password);
                 if (user == "False")
                 {
-                    context.SetError("invalid_grant", "Username or password is incorrect");
+                    context.SetError("invalid access", "Username or password is incorrect");
                     return;
                 }
                 var identity = new ClaimsIdentity(context.Options.AuthenticationType);

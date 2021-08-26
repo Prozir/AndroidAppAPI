@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -8,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
@@ -41,7 +43,7 @@ namespace AndroidAppAPI.Controllers
                 {
                     foreach (var val in provider.FormData.GetValues(key))
                     {
-                        Console.WriteLine(string.Format("{0}: {1}", key, val));
+                        //Console.WriteLine(string.Format("{0}: {1}", key, val));
                         if (key == "filetype")
                             filetype = val;
                         else if (key == "type")
@@ -53,7 +55,7 @@ namespace AndroidAppAPI.Controllers
                         else if (key == "masteruserid")
                             masteruserid = Int32.Parse(val);
                         else if (key == "filestatus")
-                            filestatus = Int32.Parse(val);                        
+                            filestatus = Int32.Parse(val);
 
                     }
                 }
@@ -69,11 +71,11 @@ namespace AndroidAppAPI.Controllers
 
                     Guid obj = Guid.NewGuid();
                     fileguid = obj.ToString();
-                   // datadate = DateTime.Now;
-                   // fileuploaddate = DateTime.Now;
-                    SaveFilePathToSQLServer(localFileName, filePath, filetype, type, pannumber, finalfilename, masteruserid, filestatus,fileguid);
+                    // datadate = DateTime.Now;
+                    // fileuploaddate = DateTime.Now;
+                    SaveFilePathToSQLServer(localFileName, filePath, filetype, type, pannumber, finalfilename, masteruserid, filestatus, fileguid);
                 }
-              
+
 
             }
             catch (Exception e)
@@ -97,7 +99,7 @@ namespace AndroidAppAPI.Controllers
             var connStr = ConfigurationManager.ConnectionStrings["Storage_db23ConnString"].ConnectionString;
 
             //push to database
-            var query ="Insert into Files(FileBin, Name, Size) " + "values (@FileBin, @Name, @Size);";
+            var query = "Insert into Files(FileBin, Name, Size) " + "values (@FileBin, @Name, @Size);";
 
             using (var conn = new SqlConnection(connStr))
             using (var cmd = new SqlCommand(query, conn))
@@ -123,7 +125,7 @@ namespace AndroidAppAPI.Controllers
             }
         }
 
-        private void SaveFilePathToSQLServer(string localFile, string filepath,string filetype,string type, string pannumber, string finalfilename, int masteruserid, int filestatus,string fileguid)
+        private void SaveFilePathToSQLServer(string localFile, string filepath, string filetype, string type, string pannumber, string finalfilename, int masteruserid, int filestatus, string fileguid)
         {
             // 1) Move file to folder
             File.Move(localFile, filepath);
@@ -132,7 +134,7 @@ namespace AndroidAppAPI.Controllers
             var connStr = ConfigurationManager.ConnectionStrings["Storage_db23ConnString"].ConnectionString;
 
             // 3) Insert in DB
-            var query = "Insert into FILESUPLOADED(FIELDGUID,FILETYPE,DATADATE,TYPE,PANNUMBER,FINALFILENAME,FILEUPLOADEDON,MASTER_USERID,FILESTATUS,FILEPATH) " 
+            var query = "Insert into FILESUPLOADED(FIELDGUID,FILETYPE,DATADATE,TYPE,PANNUMBER,FINALFILENAME,FILEUPLOADEDON,MASTER_USERID,FILESTATUS,FILEPATH) "
                         + "values (@FileGuid,@FileType,@DataDate,@Type,@Pannumber,@Finalfilename,@Fileuploadedon,@Masteruserid,@Filestatus,@FilePath);";
 
             using (var conn = new SqlConnection(connStr))
@@ -198,7 +200,75 @@ namespace AndroidAppAPI.Controllers
         }
 
 
-    }
 
+
+        [HttpPost]
+        [Route("api/File/GetFiles")]
+        [Authorize]
+
+        public string GetUserFiles([FromUri] string username)
+        {
+            var connStr = ConfigurationManager.ConnectionStrings["Storage_db23ConnString"].ConnectionString;
+            SqlConnection con = new SqlConnection(connStr);
+
+            // get user master user id  from Master User table
+            SqlDataAdapter userdatada = new SqlDataAdapter("select * FROM dbo.Master_USER WHERE Username = '" + username + "' ;", con);
+            DataTable userdatadt = new DataTable();
+            userdatada.Fill(userdatadt);
+
+            int currentuserid = Int32.Parse(userdatadt.Rows[0]["USERID"].ToString());
+
+
+
+            //get all uploaded files for the current user id
+            SqlDataAdapter da = new SqlDataAdapter("select * FROM dbo.FILESUPLOADED WHERE MASTER_USERID = '" + currentuserid + "' ;", con);
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+
+            if (dt.Rows.Count > 0)
+            {
+                string fileuploaddetailsstring = JsonConvert.SerializeObject(dt);
+                return fileuploaddetailsstring;
+            }
+            else
+            {
+                return "No file upload data available for specified user.";
+            }
+        }
+
+        // download file
+
+        [HttpGet]
+        [Route("api/File/downloadfile")]
+        [Authorize]
+
+        public HttpResponseMessage DownloadFile([FromUri] string filename)
+        {
+            if (filename != null)
+            {
+                var result = new HttpResponseMessage(HttpStatusCode.OK);
+                var fileName = filename;
+                var filePath = HttpContext.Current.Server.MapPath($"~/AppFileUploads/{fileName}");
+
+                var fileBytes = File.ReadAllBytes(filePath);
+                var fileMemStream = new MemoryStream(fileBytes);
+                result.Content = new StreamContent(fileMemStream);
+                var headers = result.Content.Headers;
+                headers.ContentDisposition = new ContentDispositionHeaderValue("attachment");
+                headers.ContentDisposition.FileName = fileName;
+                headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                //new MediaTypeHeaderValue("application/jpg");
+                headers.ContentLength = fileMemStream.Length;
+                return result;
+            }
+
+            else
+            {
+                HttpResponseMessage response = Request.CreateResponse(HttpStatusCode.NotFound, "File not found");
+                return response;
+            }                
+
+        }
+    }
    
 }

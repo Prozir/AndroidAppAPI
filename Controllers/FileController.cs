@@ -206,7 +206,7 @@ namespace AndroidAppAPI.Controllers
         [Route("api/File/GetFiles")]
         [Authorize]
 
-        public string GetUserFiles([FromUri] string username)
+        public HttpResponseMessage GetUserFiles([FromUri] string username)
         {
             var connStr = ConfigurationManager.ConnectionStrings["Storage_db23ConnString"].ConnectionString;
             SqlConnection con = new SqlConnection(connStr);
@@ -227,12 +227,14 @@ namespace AndroidAppAPI.Controllers
 
             if (dt.Rows.Count > 0)
             {
-                string fileuploaddetailsstring = JsonConvert.SerializeObject(dt);
-                return fileuploaddetailsstring;
+               // string fileuploaddetailsstring = JsonConvert.SerializeObject(dt);
+               // return fileuploaddetailsstring;
+                return Request.CreateResponse(HttpStatusCode.OK, dt);
             }
             else
             {
-                return "No file upload data available for specified user.";
+               // return "No file upload data available for specified user.";
+                return Request.CreateResponse(HttpStatusCode.NotFound, "No file uploaded data available");
             }
         }
 

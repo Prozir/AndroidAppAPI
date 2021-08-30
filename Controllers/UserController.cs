@@ -21,7 +21,7 @@ namespace AndroidAppAPI.Controllers
         [HttpPost]
         [Route("api/User/GetUserData")]
         [Authorize]        
-        public string GetUserData([FromUri] string username)
+        public HttpResponseMessage GetUserData([FromUri] string username)
         {
             var connStr = ConfigurationManager.ConnectionStrings["Storage_db23ConnString"].ConnectionString;
             SqlConnection con = new SqlConnection(connStr);
@@ -78,12 +78,14 @@ namespace AndroidAppAPI.Controllers
             if (dt.Rows.Count > 0)
             {
                 dt.Rows[0]["PANCARDNUMBER"] = allpancardnumber;
-                string userdetailsstring = JsonConvert.SerializeObject(dt);
-                return userdetailsstring;
+                // string userdetailsstring = JsonConvert.SerializeObject(dt);
+                // return userdetailsstring;
+                return Request.CreateResponse(HttpStatusCode.OK, dt);
             }
             else
             {
-                return "No data available for specified user.";
+                //return "No data available for specified user.";
+                return Request.CreateResponse(HttpStatusCode.NotFound, "No data available for specified user");
             }
         }
 
